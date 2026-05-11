@@ -14,7 +14,7 @@ const allTags = [...new Set(allPosts.flatMap(p => p.data.tags || []))].sort();
   <div class="max-w-5xl mx-auto px-6 py-12">
     <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="text-3xl font-bold mb-1">博客</h1>
+        <h1 class="text-3xl font-bold mb-1">博客 <span class="text-lg font-normal" style="color: var(--color-muted);">({allPosts.length} 篇)</span></h1>
         <p style="color: var(--color-muted);">技术折腾、Agent 实践、双城生活</p>
       </div>
       <a href="/rss.xml" class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors" style="color: var(--color-muted); border-color: var(--color-border);" hover-style="color: var(--color-accent); border-color: var(--color-accent);">
