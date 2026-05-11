@@ -34,9 +34,17 @@ const ready = true;
   var category = "General";
   var categoryId = "DIC_kwDOSZ7gmc4C8wdc";
 
+  // ── 获取当前主题 ──
+  function getTheme() {
+    if (document.documentElement.classList.contains('dark')) return 'dark';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark_dimmed';
+    return 'light';
+  }
+
   var container = document.getElementById('giscus-comments');
   if (!container) return;
 
+  // ── 注入 Giscus ──
   var script = document.createElement('script');
   script.src = 'https://giscus.app/client.js';
   script.setAttribute('data-repo', repo);
@@ -48,10 +56,28 @@ const ready = true;
   script.setAttribute('data-reactions-enabled', '1');
   script.setAttribute('data-emit-metadata', '0');
   script.setAttribute('data-input-position', 'top');
+  script.setAttribute('data-theme', getTheme());
   script.setAttribute('data-lang', 'zh-CN');
   script.setAttribute('data-loading', 'lazy');
   script.setAttribute('crossorigin', 'anonymous');
   script.async = true;
   container.appendChild(script);
+
+  // ── 主题切换时同步 Giscus ──
+  function syncTheme() {
+    var theme = getTheme();
+    var iframe = document.querySelector('iframe.giscus-frame');
+    if (iframe) {
+      iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: theme } } }, 'https://giscus.app');
+    }
+  }
+
+  // 监听系统颜色方案变化
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncTheme);
+  }
+  // 监听 html class 变化（手动切换）
+  var observer = new MutationObserver(syncTheme);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 })();
 </script>
