@@ -16,10 +16,40 @@ interface Props {
 
 const { doc } = Astro.props as Props;
 const { Content, headings } = await render(doc);
+
+// Previous & next docs (sorted by title)
+const allDocs = (await getCollection('docs'))
+  .filter(d => !d.data.draft)
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, 'zh'));
+const idx = allDocs.findIndex(d => d.id === doc.id);
+const prevDoc = idx > 0 ? allDocs[idx - 1] : null;
+const nextDoc = idx < allDocs.length - 1 ? allDocs[idx + 1] : null;
 ---
 
 <DocLayout title={doc.data.title} description={doc.data.description} headings={headings}>
   <h1 class="text-3xl font-bold !mb-2 !mt-0">{doc.data.title}</h1>
   <p class="text-sm mb-8" style="color: var(--color-muted);">{doc.data.description}</p>
   <Content />
+
+  <!-- Prev / Next navigation -->
+  <nav class="flex flex-col sm:flex-row justify-between gap-3 mt-16 pt-8" style="border-top: 1px solid var(--color-border);">
+    {prevDoc ? (
+      <a href={`/docs/${prevDoc.id}/`} class="flex-1 relative p-4 rounded-xl border transition-all duration-200 hover:-translate-y-0.5" style="border-color: var(--color-border); background: var(--color-surface); text-decoration: none;" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor=''">
+        <div class="flex items-center gap-1.5 text-xs mb-2" style="color: var(--color-muted);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          上一篇
+        </div>
+        <div class="text-sm font-medium leading-snug line-clamp-2" style="color: var(--color-text);">{prevDoc.data.title}</div>
+      </a>
+    ) : <div class="flex-1 hidden sm:block"></div>}
+    {nextDoc ? (
+      <a href={`/docs/${nextDoc.id}/`} class="flex-1 relative p-4 rounded-xl border transition-all duration-200 hover:-translate-y-0.5 sm:text-right" style="border-color: var(--color-border); background: var(--color-surface); text-decoration: none;" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor=''">
+        <div class="flex items-center gap-1.5 text-xs mb-2 sm:justify-end" style="color: var(--color-muted);">
+          下一篇
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        </div>
+        <div class="text-sm font-medium leading-snug line-clamp-2" style="color: var(--color-text);">{nextDoc.data.title}</div>
+      </a>
+    ) : <div class="flex-1 hidden sm:block"></div>}
+  </nav>
 </DocLayout>
