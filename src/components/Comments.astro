@@ -2,32 +2,14 @@
 /**
  * Giscus 评论区组件
  * 基于 GitHub Discussions，免费无广告。
- *
- * 启用步骤：
- * 1. 在 GitHub 仓库启用 Discussions（Settings → General → Discussions ✓）
- * 2. 安装 Giscus App：https://github.com/apps/giscus
- * 3. 到这里生成配置：https://giscus.app/zh-CN
- * 4. 将生成的 data-* 参数填入下方
  */
 
-// ─── 配置区 ───
-// 去 https://giscus.app/zh-CN 生成你的配置后替换这里
-const GISCUS_CONFIG = {
-  repo: 'TYD5630/mrt-site',            // GitHub 仓库
-  repoId: 'R_kgDOSZ7gmQ',               // 仓库 ID
-  category: 'General',                   // Discussions 分类
-  categoryId: 'DIC_kwDOSZ7gmc4C8wdc',   // 分类 ID
-  mapping: 'pathname',                   // 页面与 discussion 的映射方式
-  strict: '1',
-  reactionsEnabled: '1',
-  emitMetadata: '0',
-  inputPosition: 'top',
-  lang: 'zh-CN',                         // 中文界面
-};
-// ──────────
-
-const { repo, repoId, category, categoryId, mapping, strict, reactionsEnabled, emitMetadata, inputPosition, lang } = GISCUS_CONFIG;
-const ready = repoId && categoryId;
+// ─── 配置 ───
+const REPO = 'TYD5630/mrt-site';
+const REPO_ID = 'R_kgDOSZ7gmQ';
+const CATEGORY = 'General';
+const CATEGORY_ID = 'DIC_kwDOSZ7gmc4C8wdc';
+const ready = true;
 ---
 
 {ready ? (
@@ -45,25 +27,31 @@ const ready = repoId && categoryId;
   </div>
 )}
 
-{ready && (
-  <script is:inline>
-    (function() {
-      const script = document.createElement('script');
-      script.src = 'https://giscus.app/client.js';
-      script.setAttribute('data-repo', '{repo}');
-      script.setAttribute('data-repo-id', '{repoId}');
-      script.setAttribute('data-category', '{category}');
-      script.setAttribute('data-category-id', '{categoryId}');
-      script.setAttribute('data-mapping', '{mapping}');
-      script.setAttribute('data-strict', '{strict}');
-      script.setAttribute('data-reactions-enabled', '{reactionsEnabled}');
-      script.setAttribute('data-emit-metadata', '{emitMetadata}');
-      script.setAttribute('data-input-position', '{inputPosition}');
-      script.setAttribute('data-lang', '{lang}');
-      script.setAttribute('data-loading', 'lazy');
-      script.setAttribute('crossorigin', 'anonymous');
-      script.async = true;
-      document.getElementById('giscus-comments').appendChild(script);
-    })();
-  </script>
-)}
+<script is:inline>
+(function() {
+  var repo = "TYD5630/mrt-site";
+  var repoId = "R_kgDOSZ7gmQ";
+  var category = "General";
+  var categoryId = "DIC_kwDOSZ7gmc4C8wdc";
+
+  var container = document.getElementById('giscus-comments');
+  if (!container) return;
+
+  var script = document.createElement('script');
+  script.src = 'https://giscus.app/client.js';
+  script.setAttribute('data-repo', repo);
+  script.setAttribute('data-repo-id', repoId);
+  script.setAttribute('data-category', category);
+  script.setAttribute('data-category-id', categoryId);
+  script.setAttribute('data-mapping', 'pathname');
+  script.setAttribute('data-strict', '1');
+  script.setAttribute('data-reactions-enabled', '1');
+  script.setAttribute('data-emit-metadata', '0');
+  script.setAttribute('data-input-position', 'top');
+  script.setAttribute('data-lang', 'zh-CN');
+  script.setAttribute('data-loading', 'lazy');
+  script.setAttribute('crossorigin', 'anonymous');
+  script.async = true;
+  container.appendChild(script);
+})();
+</script>
