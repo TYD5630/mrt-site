@@ -4,7 +4,7 @@ description: "Hermes Agent ⚡"
 sidebar:
   order: 50
   label: "Hermes Agent ⚡"
-tags: ["hermes", "agent", "architecture", "memory", "brain", "skills", "workflow", "self-evolution", "kanban", "collaboration"]
+tags: ["hermes", "agent", "architecture", "memory", "brain", "skills", "workflow", "self-evolution", "kanban", "collaboration", "routing", "progressive-context"]
 ---
 
 # Hermes Agent ⚡
@@ -97,9 +97,105 @@ Brain v1.1.9
 - 先记录、再回答
 - 信息就像漏水的桶，多等一秒就多漏一点
 
+### 3.4 晋升引擎（Promotion Engine）— 动态层级管理
+在 Brain 后端实现 hot/warm/cold 三层自动晋升/降级：
+
+```javascript
+promotionScore = 时效(0.35) + 频率(0.20) + 优先级(0.25) + 类型加成(0.10)
+```
+
+| 层级 | 条件 | 行为 |
+|:-----|:------|:------|
+| 🔥 **hot** | access≥3 次 + 1 天内 + pri≥0.7 | 自动预载到会话上下文 |
+| ⚡ **warm** | 默认层级 | 按需搜索，不预载 |
+| ❄️ **cold** | 从未访问 + >90 天 | 仅语义搜索可召回，不参与关键词匹配 |
+
+**生产数据**（2026-05-10 首次 promote 后）：
+- 🔥 hot: 190 条 (68.3%)
+- ⚡ warm: 20 条 (7.2%)
+- ❄️ cold: 68 条 (24.5%)
+- 总计: 278 条记忆
+
+**命令**：`node promotion-engine.js status | promote | hot | watch`
+
+**自动集成**：`brain_inject` 自动注入 hot 层 top-3 记忆（跳过工具日志），无需手动调用。
+
 ---
 
-## 四、行为框架（SOUL.md）
+## 四、渐进式上下文加载（三层路由架构）
+
+### 4.1 概述
+核心路由系统，将用户查询按照三层递进策略路由到最合适的技能，实现「80% 低成本命中 + 20% 高级推理兜底」。
+
+### 4.2 三层递进设计
+```
+用户查询
+  ├─ ① 关键词匹配 (O(1) 查表)
+  │    ├─ 命中 (score ≥ 0.1) → 预加载 SKILL.md ✅
+  │    └─ 未命中 → ②
+  ├─ ② 语义回退 (向量检索 ~5s)
+  │    ├─ 命中 → 匹配画像库 → 预加载 ✅
+  │    └─ 未命中 → ③
+  └─ ③ 通用 fallback（不加载任何 skill）
+```
+
+### 4.3 关键词匹配引擎
+维护 70+ 条目的关键词映射表，评分公式：
+```
+分数 = 名称匹配(0.35) + 描述匹配(0.20) + 关键词命中(0.20)
+      + 类别匹配(0.15) + 文件名暗示(0.10)
+```
+
+**关键设计**：
+- 软归一化 + 边际递减（2 个匹配是 1 个的 1.5× 而非 2×）
+- 阈值 0.1（宁低勿高，宁可误命中也不漏）
+- 一个匹配 > 零个匹配，这是最重要的非线性
+
+### 4.4 语义回退层
+关键词失配时自动调用 `brain-memory-qmd`（sentence-transformers all-MiniLM-L6-v2，384 维），结果与 93 个技能画像交叉匹配。
+
+**匹配维度**：
+| 维度 | 权重 | 计算方式 |
+|:-----|:----:|:---------|
+| 技能名全文匹配 | 0.35 | 精确/模糊匹配 |
+| 名称词素相似度 | 0.15 | token 切分后重叠率 |
+| 关键词命中 | 0.20 | 映射表中的条目匹配 |
+| 描述词重叠 | 0.15 | 描述文本的 Jaccard 相似度 |
+| 文件名暗示 | 0.30 | 文件名派生词匹配 |
+
+### 4.5 生产数据
+| 指标 | 数据 |
+|:----|:----:|
+| 关键词直接命中率 | 62.5%（25 查询中多轮测试） |
+| 语义回退捕获率 | 37.5%（剩余全部被语义层捕获） |
+| 全回退率 | **0%**（零崩溃、零超时） |
+| 关键词查表延迟 | <1ms |
+| 语义搜索延迟 | ~5s（含向量检索 + 画像匹配） |
+| 画像总数 | 93 个（筛掉 7 个无映射的） |
+
+### 4.6 关键实现文件
+| 文件 | 作用 |
+|:-----|:------|
+| `skills/progressive-context/scripts/build-profiles.js` | 从 INDEX.md + AGENTS.md 构建技能画像库 |
+| `skills/progressive-context/scripts/context-router.js` | 主路由器：输入查询 → 输出技能排序 |
+| `skills/progressive-context/scripts/route-execute.js` | 路由 + 自动预加载 SKILL.md（AGENTS.md 集成入口） |
+| `skills/progressive-context/profiles.json` | 生成的技能画像缓存（93 个 profile） |
+
+### 4.7 画像库映射治理
+`profiles.json` → `skills/<name>/SKILL.md` 的映射有 7% 的自然漂移率：
+
+| 漂移类型 | 举例 | 治理措施 |
+|:---------|:-----|:---------|
+| 版本号不同步 | `brain-v1.1.9` → 实际 `brain-v1.1.8` | `SKILL_DIR_ALIAS` 别名映射表 |
+| 索引格式不兼容 | `chrome9222` 在 INDEX 有，目录无 | `hasRealSKILL()` 三级检查 |
+| 占位目录 | `diagramming/` 只有 DESCRIPTION.md | 后处理过滤器 |
+| 幽灵条目 | `memory-lancedb-pro/` 不存在 | 构建时自动过滤 |
+
+**最终状态**：93/93 映射成功，110 断言全绿。
+
+---
+
+## 五、行为框架（SOUL.md）
 
 ### 4.1 核心准则
 | 准则 | 含义 |
@@ -150,26 +246,31 @@ Brain v1.1.9
 9. 会话结束：brain_save_decision + brain_tool_log
 ```
 
-### 5.2 任务处理流程（5 步思维链）
+### 6.2 任务处理流程（6 步思维链）
 ```
 收到请求
   ├─ ① 分级（简单→直接做 / 中等→列计划 / 复杂→调研方案）
   ├─ ② 80/20 定位（哪部分价值最大？先做那个）
-  ├─ ③ 工具优先（有 skill/tool 吗？调它。不确定？brain_tool_advise）
-  ├─ ④ 执行+验证（每步带检查点，快速失败早暴露）
-  └─ ⑤ 省 token 检查（回应够短？上下文够精简？）
+  ├─ ③ 渐进式路由（route-execute.js → 关键词 O(1) → 语义回退）
+  │   命中 → 预加载匹配 SKILL.md
+  │   未命中 → 通用工具兜底
+  ├─ ④ 工具优先（有 skill/tool 吗？调它。不确定？brain_tool_advise）
+  ├─ ⑤ 执行+验证（每步带检查点，快速失败早暴露）
+  └─ ⑥ 省 token 检查（回应够短？上下文够精简？）
 ```
 
-### 5.3 技能调用链
+### 6.3 技能调用链
 ```
 收到任务
-  ├─ ① 关键词匹配（grep INDEX.md + skill 名）
+  ├─ ① 渐进式路由（route-execute.js | brain_tool_advise）
+  │   ├─ 命中 93 画像之一 → 预加载 SKILL.md
+  │   └─ 未命中 → ②
   ├─ ② 类别匹配（文档/浏览器/邮件/定时/AI 等）
   ├─ ③ 工具兜底（无 skill → 内置工具直接解决）
   └─ ④ 复杂任务完成 → 技能进化决策树
 ```
 
-### 5.4 错误处理链
+### 6.4 错误处理链
 ```
 工具调用失败
   ├─ ① 重试 1 次（网络抖动等瞬时问题）
@@ -180,9 +281,9 @@ Brain v1.1.9
 
 ---
 
-## 六、能力体系
+## 七、能力体系
 
-### 6.1 工具全景
+### 7.1 工具全景
 
 #### 内置系统工具
 | 工具 | 用途 |
@@ -190,10 +291,14 @@ Brain v1.1.9
 | `execute_shell_command` | 执行 CLI 命令 |
 | `read_file` / `write_file` / `edit_file` | 文件读写编辑 |
 | `grep_search` / `glob_search` | 文件搜索 |
-| `browser_use` | 浏览器控制（Playwright） |
-| `desktop_screenshot` / `view_image` | 屏幕截图/看图 |
-| `get_current_time` | 获取时间 |
+| `browser_use` | 浏览器控制（Playwright，支持可见/无头/CDP） |
+| `desktop_screenshot` / `view_image` / `view_video` | 屏幕截图/看图/看视频 |
+| `get_current_time` / `set_user_timezone` | 获取/设置时间 |
 | `memory_search` | 语义记忆搜索 |
+| `send_file_to_user` | 向用户发送文件 |
+| `get_token_usage` | API token 用量查询 |
+| `create_plan` / `finish_plan` / `revise_current_plan` | 计划管理（多步骤任务编排） |
+| `view_subtasks` / `update_subtask_state` / `finish_subtask` | 子任务进度管理 |
 
 #### MCP 工具集
 | 工具集 | 数量 | 来源 |
@@ -203,7 +308,7 @@ Brain v1.1.9
 | Tavily 搜索 | 5 | `tavily_search` / `extract` / `crawl` / `map` / `research` |
 | Agent 对话 | 3 | `list_agents` / `chat_with_agent` / `submit_to_agent` |
 
-#### 110 个技能（按优先级分三层）
+#### 112 个技能（按优先级分三层）
 
 | 层级 | 数量 | 典型技能 |
 |:----:|:----:|:---------|
@@ -211,7 +316,7 @@ Brain v1.1.9
 | 🥈 **增强** | ~25 | himalaya, github, guidance, mcp-bridge-deploy, plugin-dev, nextauth-jwe-debug, openlit-deploy, dingtalk_channel, software-development |
 | 🥉 **扩展** | ~70 | creative, research, mlops, apple, gaming, red-teaming, domain, inference-sh, productivity, smart-home 等 |
 
-### 6.2 关键词 → 技能匹配（节选）
+### 7.2 关键词 → 技能匹配（节选）
 | 用户提到 | 匹配技能 |
 |:---------|:---------|
 | 文档/Word/报告 | docx |
@@ -228,9 +333,9 @@ Brain v1.1.9
 
 ---
 
-## 七、自我进化
+## 八、自我进化
 
-### 7.1 Skill Evolution 🧬
+### 8.1 Skill Evolution 🧬
 自进化技能系统，在每个复杂任务完成后自动走决策树：
 ```
 任务完成
@@ -241,12 +346,12 @@ Brain v1.1.9
   └─ 都不是 → 跳过
 ```
 
-### 7.2 知识库驱动优化
+### 8.2 知识库驱动优化
 定期回顾 `D:\wiki\` 知识库 → 发现行为缺口 → 更新 SOUL.md 和 AGENTS.md：
 - 已执行两轮自我优化（2026-05-05），涵盖 7 个知识点
 - 包括：Karpathy 编码准则、效率意识、Brain 工具激活、错误处理链、结构化输出等
 
-### 7.3 审计机制
+### 8.3 审计机制
 | 审计目标 | 频率 | 检查项 |
 |:---------|:----:|:-------|
 | 知识库 wiki | 按需 | sources 完整性、断链、孤立页、frontmatter 规范 |
@@ -255,9 +360,9 @@ Brain v1.1.9
 
 ---
 
-## 八、知识管理（Karpathy LLM Wiki）
+## 九、知识管理（Karpathy LLM Wiki）
 
-### 8.1 Wiki 结构
+### 9.1 Wiki 结构
 ```
 D:\wiki\          # 知识库根目录
 ├── SCHEMA.md      # 领域规则与约定
@@ -271,20 +376,20 @@ D:\wiki\          # 知识库根目录
 └── _archive/      # 归档
 ```
 
-### 8.2 页面规范
+### 9.2 页面规范
 - 每条必须有 YAML frontmatter：`title/created/updated/type/tags/sources`
 - 至少 2 个出站 `[wikilinks](/docs/wikilinks)`
 - 新建页面同步更新 index.md 和 log.md
 - `sources` 字段不可缺失
 
-### 8.3 当前规模
-- **35** 个内容页面（entities + concepts）
-- 覆盖：Agent 架构、MCP 调试、神经网络、AI Agent 课程、效率工具、生产力方法论等
+### 9.3 当前规模
+- **42** 个内容页面（entities 22 + concepts 20）
+- 覆盖：Agent 架构、MCP 调试、神经网络、AI Agent 课程、效率工具、生产力方法论、系统架构、Monte Carlo 等
 - 零断链、零孤立页面
 
 ---
 
-## 九、继承自 Hermes 框架的设计模式
+## 十、继承自 Hermes 框架的设计模式
 
 | # | 模式 | 说明 |
 |:-:|:-----|:------|
@@ -302,44 +407,46 @@ D:\wiki\          # 知识库根目录
 | ⑫ | **任务执行流程** | 5 步思维链 |
 | ⑬ | **Brain 深度激活** | 19 工具按场景使用 |
 | ⑭ | **错误处理链** | 系统化降级 |
+| ⑮ | **渐进式加载** | 三层路由 + 语义回退 + 93 画像 |
+| ⑯ | **晋升引擎** | hot/warm/cold 自动层级管理 + 会话预载 |
+| ⑰ | **画像库映射治理** | `hasRealSKILL()` 三级检查 + 别名映射 |
+| ⑱ | **跨 Agent 记忆共享** | `brain_cross_agent_reason` 零侵入查询 |
 
 ---
 
-## 十、运行环境
+## 十一、运行环境
 
 | 项目 | 值 |
 |:-----|:----|
 | OS | Windows 10 (AMD64) |
-| Python | `C:\Users\MRT\AppData\Local\Programs\Python\Python312\python.exe` |
+| Python | Python 3.12（详见 PROFILE.md） |
 | Node.js | v23.6.1 |
 | npm | 10.9.2 |
-| yt-dlp | 2026.03.17（py -3 -m yt_dlp） |
-| 代理端口 | 7897 |
-| Skywork 代理端口 | 7890 |
-| 工作区路径 | `C:\Users\MRT\.copaw\workspaces\default\` |
+| 网络 | HTTP 代理（本地端口） |
+| 工作区 | CoPaw 默认工作区 |
 
 ---
 
-## 十一、Kanban 看板系统（多 Agent 协调）
+## 十二、Kanban 看板系统（多 Agent 协调）
 
-### 11.1 概述
+### 12.1 概述
 SQLite 看板 + 9 个 MCP 工具。Worker-Orchestrator 模式，用于多 Agent 任务分发与协调。
 
-### 11.2 状态机
+### 12.2 状态机
 ```
   triage → todo → ready → running → done → archived
                 ↑_________|  |
                     unblock   blocked → ready
 ```
 
-### 11.3 工作流（Worker 侧）
+### 12.3 工作流（Worker 侧）
 当收到 `[Task Dispatch from orchestrator]` 带 `Task: #<task_id>` 时：
 1. **认领** → `kanban_claim(task_id, agent='default')`
 2. **心跳保活** → 每 10 分钟 `kanban_heartbeat(task_id, agent)`（Claim TTL 15 分钟）
 3. **完成** → `kanban_done(task_id)`
 4. **阻塞** → `kanban_block(task_id, reason)`
 
-### 11.4 9 个 Kanban MCP 工具
+### 12.4 9 个 Kanban MCP 工具
 | 工具 | 作用 |
 |:-----|:------|
 | `kanban_claim` | 认领任务（running） |
@@ -354,7 +461,7 @@ SQLite 看板 + 9 个 MCP 工具。Worker-Orchestrator 模式，用于多 Agent 
 
 ---
 
-## 十二、Agent 协作与通信
+## 十三、Agent 协作与通信
 
 提供 3 种多 Agent 通信模式：
 
@@ -373,7 +480,7 @@ SQLite 看板 + 9 个 MCP 工具。Worker-Orchestrator 模式，用于多 Agent 
 
 ---
 
-## 十三、核心文件清单
+## 十四、核心文件清单
 
 | 文件 | 作用 | 读写时机 |
 |:-----|:------|:---------|
@@ -387,16 +494,15 @@ SQLite 看板 + 9 个 MCP 工具。Worker-Orchestrator 模式，用于多 Agent 
 
 ---
 
-## 十四、产物与交付物
+## 十五、产物与交付物
 
 | 项目 | 路径 | 说明 |
 |:-----|:------|:------|
 | **桌面宠物 HTML** | `hermes-web-pet.html` | 紫黑像素风 + 全套动画（呼吸/闪电/粒子/Glitch） |
 | **桌面浮窗 Python** | `hermes_deskpet.py` | pywebview + WebView2，透明置顶穿透 |
 | **启动脚本** | `启动Hermes信使.bat` | Edge 独立窗口模式 |
-| **桌面快捷方式** | `Hermes浮窗.bat` → `C:\Users\MRT\Desktop\` | 一键启动桌面浮窗 |
-| **知识库** | `D:\wiki\` | Karpathy LLM Wiki 模式，36 页 |
-| **图片目录** | `D:\temp\秀人写真\` | ~521 张，隐藏属性 +h |
+| **桌面快捷方式** | `Hermes浮窗.bat` | 一键启动桌面浮窗 |
+| **知识库** | wiki 目录 | Karpathy LLM Wiki 模式，36 页 |
 
 ---
 
