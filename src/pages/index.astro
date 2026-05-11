@@ -1,11 +1,69 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import BlogCard from '../components/BlogCard.astro';
+import DocCard from '../components/DocCard.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const recentPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+  .slice(0, 4);
+
+const docs = (await getCollection('docs'))
+  .filter(d => !d.data.draft)
+  .sort((a, b) => (a.data.sidebar.order || 99) - (b.data.sidebar.order || 99))
+  .slice(0, 4);
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<BaseLayout title="首页" description="MRT · 不见长安 — 个人博客与知识文档">
+  <!-- Hero -->
+  <section class="max-w-3xl mx-auto px-6 pt-24 pb-16 text-center">
+    <h1 class="text-5xl font-bold tracking-tight">
+      不见<span class="text-[#a78bfa]">长安</span>
+    </h1>
+    <p class="text-xl text-[#a1a1aa] mt-4 max-w-xl mx-auto">
+      技术笔记 · Agent 实践 · 工具折腾 · 双城杂记
+    </p>
+    <div class="flex justify-center gap-4 mt-8">
+      <a href="/blog" class="px-5 py-2.5 rounded-lg bg-[#a78bfa] text-black font-medium text-sm hover:bg-[#c4b5fd] transition-colors">阅读博客</a>
+      <a href="/docs" class="px-5 py-2.5 rounded-lg border border-[#2a2a30] text-sm hover:border-[#a78bfa]/40 transition-colors">浏览文档</a>
+    </div>
+  </section>
+
+  <!-- Recent Posts -->
+  <section class="max-w-5xl mx-auto px-6 pb-16">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">最近文章</h2>
+      <a href="/blog" class="text-sm text-[#a78bfa] hover:text-[#c4b5fd]">查看全部 →</a>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      {recentPosts.map(post => (
+        <BlogCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          tags={post.data.tags || []}
+          url={`/blog/${post.id}`}
+        />
+      ))}
+    </div>
+  </section>
+
+  <!-- Quick Docs -->
+  <section class="max-w-5xl mx-auto px-6 pb-24">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">文档速览</h2>
+      <a href="/docs" class="text-sm text-[#a78bfa] hover:text-[#c4b5fd]">查看全部 →</a>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      {docs.map((doc, i) => (
+        <DocCard
+          title={doc.data.title}
+          description={doc.data.description}
+          url={`/docs/${doc.id}`}
+          index={i}
+        />
+      ))}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,43 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import TableOfContents from '../components/TableOfContents.astro';
+
+export interface Props {
+  title: string;
+  description?: string;
+  headings?: { depth: number; slug: string; text: string }[];
+}
+
+const { title, description, headings = [] } = Astro.props;
+const allDocs = await getCollection('docs');
+const sidebarItems = allDocs
+  .filter(doc => !doc.data.draft)
+  .sort((a, b) => (a.data.sidebar.order || 99) - (b.data.sidebar.order || 99));
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="max-w-6xl mx-auto px-6 py-10 flex gap-10">
+    <!-- Left Sidebar -->
+    <aside class="w-52 shrink-0 hidden lg:block">
+      <nav class="sticky top-20 space-y-1">
+        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-muted);">文档目录</h3>
+        {sidebarItems.map(doc => (
+          <a href={`/docs/${doc.id}`} class="sidebar-link">
+            {doc.data.sidebar.label || doc.data.title}
+          </a>
+        ))}
+      </nav>
+    </aside>
+
+    <!-- Content -->
+    <article class="flex-1 min-w-0 prose">
+      <slot />
+    </article>
+
+    <!-- Right TOC -->
+    <aside class="w-48 shrink-0 hidden xl:block">
+      <TableOfContents headings={headings} />
+    </aside>
+  </div>
+</BaseLayout>

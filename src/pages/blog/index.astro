@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import BlogCard from '../../components/BlogCard.astro';
+
+const allPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const allTags = [...new Set(allPosts.flatMap(p => p.data.tags || []))].sort();
+---
+
+<BaseLayout title="博客" description="MRT 的技术笔记与思考">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold mb-1">博客</h1>
+        <p style="color: var(--color-muted);">技术折腾、Agent 实践、双城生活</p>
+      </div>
+      <a href="/rss.xml" class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors" style="color: var(--color-muted); border-color: var(--color-border);" hover-style="color: var(--color-accent); border-color: var(--color-accent);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="18" r="3"/><path d="M4 4v4c8.8 0 16 7.2 16 16h4C24 12.9 19.1 8 12.9 4z"/><path d="M4 10v4c5.5 0 10 4.5 10 10h4c0-7.7-6.3-14-14-14z"/></svg>
+        RSS
+      </a>
+    </div>
+
+    {allTags.length > 0 && (
+      <div class="flex flex-wrap items-center gap-2 mb-8">
+        {allTags.slice(0, 20).map(tag => (
+          <a href={`/blog/tags/${encodeURIComponent(tag)}/`} class="tag" style="text-decoration: none;">{tag}</a>
+        ))}
+        {allTags.length > 20 && (
+          <a href="/blog/tags" class="text-xs" style="color: var(--color-muted);">+{allTags.length - 20} 更多</a>
+        )}
+      </div>
+    )}
+
+    <div class="grid md:grid-cols-2 gap-4">
+      {allPosts.map(post => (
+        <BlogCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          tags={post.data.tags || []}
+          url={`/blog/${post.id}`}
+        />
+      ))}
+    </div>
+
+    {allPosts.length === 0 && (
+      <p class="text-[#52525b] text-center py-12">暂无文章，敬请期待。</p>
+    )}
+  </div>
+</BaseLayout>

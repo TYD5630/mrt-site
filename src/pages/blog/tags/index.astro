@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = (await getCollection('blog')).filter(p => !p.data.draft);
+const tagCount = new Map();
+for (const post of allPosts) {
+  for (const tag of (post.data.tags || [])) {
+    tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+  }
+}
+const sortedTags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
+const maxCount = sortedTags.length > 0 ? sortedTags[0][1] : 1;
+---
+
+<BaseLayout title="标签" description="博客标签聚合">
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold mb-2">标签</h1>
+    <p class="mb-8" style="color: var(--color-muted);">共 {sortedTags.length} 个标签 · {allPosts.length} 篇文章</p>
+
+    <div class="flex flex-wrap gap-3">
+      {sortedTags.map(([tag, count]) => {
+        const ratio = count / maxCount;
+        const size = Math.round((0.8 + ratio * 0.6) * 100) / 100;
+        return (
+          <a href={`/blog/tags/${encodeURIComponent(tag)}/`}
+             class="tag-cloud-item"
+             style={`font-size: ${size}rem; opacity: ${0.6 + ratio * 0.4};`}>
+            {tag}
+            <span style="color: var(--color-muted); font-size: 0.75em; margin-left: 0.2rem;">({count})</span>
+          </a>
+        );
+      })}
+    </div>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  .tag-cloud-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-accent);
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .tag-cloud-item:hover {
+    opacity: 1 !important;
+    border-color: var(--color-accent);
+  }
+</style>

@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import BlogCard from '../../../components/BlogCard.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const tags = new Set<string>();
+  for (const p of posts) {
+    for (const t of (p.data.tags || [])) {
+      tags.add(t);
+    }
+  }
+  return [...tags].map(tag => ({
+    params: { tag },
+    props: { tag },
+  }));
+}
+
+const { tag } = Astro.props;
+const allPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft && (p.data.tags || []).includes(tag))
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+---
+
+<BaseLayout title={`#${tag}`} description={`标签：${tag}`}>
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-3 mb-8">
+      <a href="/blog/tags" class="text-sm" style="color: var(--color-muted);">← 所有标签</a>
+      <span style="color: var(--color-border);">/</span>
+      <h1 class="text-2xl font-bold">#{tag}</h1>
+      <span class="text-sm" style="color: var(--color-muted);">({allPosts.length} 篇)</span>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      {allPosts.map(post => (
+        <BlogCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          tags={post.data.tags || []}
+          url={`/blog/${post.id}`}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

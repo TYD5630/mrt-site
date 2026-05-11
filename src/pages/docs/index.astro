@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import DocCard from '../../components/DocCard.astro';
+
+const allDocs = (await getCollection('docs'))
+  .filter(d => !d.data.draft)
+  .sort((a, b) => (a.data.sidebar.order || 99) - (b.data.sidebar.order || 99));
+
+// Collect all tags from docs
+const tagMap = new Map();
+for (const doc of allDocs) {
+  const tags = doc.data.tags || [];
+  for (const tag of tags) {
+    if (!tagMap.has(tag)) tagMap.set(tag, []);
+    tagMap.get(tag).push(doc);
+  }
+}
+const docTags = [...tagMap.entries()].sort((a, b) => b[1].length - a[1].length);
+---
+
+<BaseLayout title="文档" description="MRT 的技术文档与知识库">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold mb-1">文档</h1>
+        <p style="color: var(--color-muted);">技术方案、配置指南、知识沉淀</p>
+      </div>
+    </div>
+
+    <!-- Category tags -->
+    {docTags.length > 0 && (
+      <div class="flex flex-wrap gap-2 mb-8 pb-6" style="border-bottom: 1px solid var(--color-border);">
+        {docTags.map(([tag, docs]) => (
+          <button class="doc-tag-filter" data-tag={tag}
+            onClick="toggleDocTag(this)">
+            {tag}
+            <span style="color: var(--color-muted); font-size: 0.75em; margin-left: 0.2rem;">({docs.length})</span>
+          </button>
+        ))}
+        <button class="doc-tag-filter active" data-tag="all"
+          onClick="toggleDocTag(this)"
+          style="background: var(--color-accent); color: black; border-color: var(--color-accent);">
+          全部
+        </button>
+      </div>
+    )}
+
+    <div id="doc-grid" class="grid md:grid-cols-2 gap-4">
+      {allDocs.map((doc, i) => {
+        const tags = (doc.data.tags || []).join(' ');
+        return (
+          <div class="doc-item" data-tags={tags}>
+            <DocCard
+              title={doc.data.title}
+              description={doc.data.description}
+              url={`/docs/${doc.id}`}
+              index={i}
+              tags={doc.data.tags || []}
+            />
+          </div>
+        );
+      })}
+    </div>
+
+    {allDocs.length === 0 && (
+      <p style="color: var(--color-muted); text-align: center; padding: 3rem 0;">暂无文档</p>
+    )}
+  </div>
+</BaseLayout>
+
+<script>
+  function toggleDocTag(btn) {
+    // Update active state
+    document.querySelectorAll('.doc-tag-filter').forEach(b => {
+      b.style.background = 'var(--color-surface)';
+      b.style.color = 'var(--color-accent)';
+      b.style.borderColor = 'var(--color-border)';
+    });
+    btn.style.background = 'var(--color-accent)';
+    btn.style.color = 'black';
+    btn.style.borderColor = 'var(--color-accent)';
+
+    const tag = btn.dataset.tag;
+    document.querySelectorAll('.doc-item').forEach(item => {
+      if (tag === 'all' || item.dataset.tags.includes(tag)) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  // Set initial active state
+  document.addEventListener('DOMContentLoaded', () => {
+    const allBtn = document.querySelector('[data-tag="all"]');
+    if (allBtn) {
+      allBtn.style.background = 'var(--color-accent)';
+      allBtn.style.color = 'black';
+      allBtn.style.borderColor = 'var(--color-accent)';
+    }
+  });
+</script>
+
+<style is:global>
+  .doc-tag-filter {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-accent);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .doc-tag-filter:hover {
+    opacity: 0.8;
+  }
+</style>

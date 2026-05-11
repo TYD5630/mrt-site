@@ -1,0 +1,36 @@
+---
+export interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  tags: string[];
+  url: string;
+}
+
+const { title, description, pubDate, tags, url } = Astro.props;
+const dateStr = pubDate.toLocaleDateString('zh-CN', {
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+---
+
+<div class="card-hover p-5 rounded-xl border" style="background: var(--color-surface); border-color: var(--color-border);">
+  <time class="text-xs" style="color: var(--color-muted);">{dateStr}</time>
+  <h2 class="text-lg font-semibold mt-1">
+    <a href={url} class="title-link">{title}</a>
+  </h2>
+  <p class="text-sm mt-2 line-clamp-2" style="color: var(--color-muted);">{description}</p>
+  {tags.length > 0 && (
+    <div class="flex flex-wrap gap-1.5 mt-3">
+      {tags.map(tag => (
+        <a href={`/blog/tags/${encodeURIComponent(tag)}/`} class="tag">{tag}</a>
+      ))}
+    </div>
+  )}
+</div>
+
+<style is:global>
+  .card-hover { transition: all 0.2s; }
+  .card-hover:hover { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  .title-link { color: var(--color-text); text-decoration: none; transition: color 0.15s; }
+  .title-link:hover { color: var(--color-accent); }
+</style>

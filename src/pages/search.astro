@@ -1,0 +1,125 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const blogPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft)
+  .map(p => ({
+    id: p.id,
+    title: p.data.title,
+    description: p.data.description,
+    tags: p.data.tags || [],
+    type: 'blog',
+    url: `/blog/${p.id}/`,
+  }));
+
+const docPages = (await getCollection('docs'))
+  .filter(d => !d.data.draft)
+  .map(d => ({
+    id: d.id,
+    title: d.data.title,
+    description: d.data.description,
+    tags: [],
+    type: 'docs',
+    url: `/docs/${d.id}/`,
+  }));
+
+const searchData = [...blogPosts, ...docPages];
+---
+
+<BaseLayout title="搜索" description="搜索博客和文档">
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold mb-2">搜索</h1>
+    <p class="mb-6" style="color: var(--color-muted);">搜索博客文章和文档内容</p>
+
+    <div class="relative mb-8">
+      <input
+        id="search-input"
+        type="text"
+        placeholder="输入关键词搜索…"
+        class="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors"
+        style="background: var(--color-surface); border-color: var(--color-border); color: var(--color-text);"
+        autofocus
+      />
+    </div>
+
+    <div id="search-results" class="space-y-3"></div>
+    <p id="search-empty" class="text-center py-12 hidden" style="color: var(--color-muted);">输入关键词开始搜索</p>
+    <p id="search-none" class="text-center py-12 hidden" style="color: var(--color-muted);">没有找到结果</p>
+  </div>
+</BaseLayout>
+
+<!-- Embed search data as JSON -->
+<script id="search-data" type="application/json" is:inline>{JSON.stringify(searchData)}</script>
+
+<script>
+  import Fuse from 'fuse.js';
+
+  const dataEl = document.getElementById('search-data');
+  const searchData = JSON.parse(dataEl?.textContent || '[]');
+
+  const fuse = new Fuse(searchData, {
+    keys: [
+      { name: 'title', weight: 2 },
+      { name: 'description', weight: 1 },
+      { name: 'tags', weight: 1.5 },
+    ],
+    threshold: 0.4,
+    includeScore: true,
+  });
+
+  const input = document.getElementById('search-input');
+  const results = document.getElementById('search-results');
+  const empty = document.getElementById('search-empty');
+  const none = document.getElementById('search-none');
+
+  empty.classList.remove('hidden');
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    results.innerHTML = '';
+    empty.classList.add('hidden');
+    none.classList.add('hidden');
+
+    if (!query) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    const hits = fuse.search(query);
+
+    if (hits.length === 0) {
+      none.classList.remove('hidden');
+      return;
+    }
+
+    hits.slice(0, 20).forEach(({ item }) => {
+      const typeColor = item.type === 'blog' ? '#a78bfa' : '#22c55e';
+      const typeLabel = item.type === 'blog' ? '博客' : '文档';
+
+      const div = document.createElement('a');
+      div.href = item.url;
+      div.className = 'block p-4 rounded-xl border transition-all duration-200 hover:opacity-80';
+      div.style.cssText = `background: var(--color-surface); border-color: var(--color-border); display: block;`;
+      div.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+          <span style="color: white; background: ${typeColor}; font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 500;">${typeLabel}</span>
+          <span style="color: var(--color-muted); font-size: 0.75rem;">${item.id}</span>
+        </div>
+        <div style="color: var(--color-text); font-weight: 600;">${highlight(item.title, query)}</div>
+        <div style="color: var(--color-muted); font-size: 0.875rem; margin-top: 0.25rem;">${highlight(item.description, query)}</div>
+      `.trim();
+      results.appendChild(div);
+    });
+  });
+
+  function highlight(text, query) {
+    if (!query) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    const before = text.slice(0, idx);
+    const match = text.slice(idx, idx + query.length);
+    const after = text.slice(idx + query.length);
+    return `${before}<mark style="background: var(--color-accent); color: white; border-radius: 2px;">${match}</mark>${after}`;
+  }
+</script>
