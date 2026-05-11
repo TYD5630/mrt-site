@@ -21,6 +21,14 @@ const { Content } = await render(post);
 // Reading time: ~200 words per minute for Chinese/English mix
 const wordCount = (post.body || '').length;
 const readTime = Math.max(1, Math.ceil(wordCount / 400));
+
+// Previous & next posts
+const allPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const idx = allPosts.findIndex(p => p.id === post.id);
+const prevPost = idx < allPosts.length - 1 ? allPosts[idx + 1] : null;
+const nextPost = idx > 0 ? allPosts[idx - 1] : null;
 ---
 
 <BlogLayout title={post.data.title} description={post.data.description}>
@@ -50,6 +58,22 @@ const readTime = Math.max(1, Math.ceil(wordCount / 400));
     <div class="prose mt-8">
       <Content />
     </div>
+
+    <!-- Prev / Next navigation -->
+    <nav class="flex justify-between items-stretch gap-4 mt-16 pt-8" style="border-top: 1px solid var(--color-border);">
+      {prevPost ? (
+        <a href={`/blog/${prevPost.id}/`} class="flex-1 group p-4 rounded-xl border transition-all" style="border-color: var(--color-border); background: var(--color-surface); text-decoration: none;" hover-style="border-color: var(--color-accent);">
+          <div class="text-xs mb-1" style="color: var(--color-muted);">← 上一篇</div>
+          <div class="text-sm font-medium group-hover" style="color: var(--color-text);">{prevPost.data.title}</div>
+        </a>
+      ) : <div class="flex-1"></div>}
+      {nextPost ? (
+        <a href={`/blog/${nextPost.id}/`} class="flex-1 group p-4 rounded-xl border text-right transition-all" style="border-color: var(--color-border); background: var(--color-surface); text-decoration: none;" hover-style="border-color: var(--color-accent);">
+          <div class="text-xs mb-1" style="color: var(--color-muted);">下一篇 →</div>
+          <div class="text-sm font-medium" style="color: var(--color-text);">{nextPost.data.title}</div>
+        </a>
+      ) : <div class="flex-1"></div>}
+    </nav>
 
     <Comments />
   </article>

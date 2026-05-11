@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="页面未找到" description="你找的页面不存在">
+  <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+    <div class="text-8xl font-bold mb-4" style="color: var(--color-accent); opacity: 0.4;">404</div>
+    <h1 class="text-2xl font-semibold mb-3">页面不存在</h1>
+    <p class="mb-8 max-w-md" style="color: var(--color-muted);">
+      可能是链接失效了，或者地址输错了。<br />试试搜索或返回首页。
+    </p>
+    <div class="flex flex-wrap gap-4 justify-center">
+      <a href="/" class="px-6 py-2.5 rounded-lg font-medium transition-all" style="background: var(--color-accent); color: #fff;">
+        返回首页
+      </a>
+      <a href="/search" class="px-6 py-2.5 rounded-lg font-medium border transition-all" style="border-color: var(--color-border); color: var(--color-text); background: var(--color-surface);">
+        搜索内容
+      </a>
+      <a href="/blog" class="px-6 py-2.5 rounded-lg font-medium border transition-all" style="border-color: var(--color-border); color: var(--color-text); background: var(--color-surface);">
+        浏览博客
+      </a>
+    </div>
+  </div>
+</BaseLayout>
