@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BlogLayout from '../../layouts/BlogLayout.astro';
+import Comments from '../../components/Comments.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -49,5 +50,7 @@ const readTime = Math.max(1, Math.ceil(wordCount / 400));
     <div class="prose mt-8">
       <Content />
     </div>
+
+    <Comments />
   </article>
 </BlogLayout>

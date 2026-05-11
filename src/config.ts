@@ -9,7 +9,7 @@ export const SITE = {
   /** Site description */
   description: '技术笔记 · Agent 实践 · 工具折腾 · 双城杂记',
   /** Site URL (used for RSS, sitemap, etc.) */
-  url: 'https://mrt.vercel.app',
+  url: 'https://mrt-site-zeta.vercel.app',
   /** Author name */
   author: 'MRT',
   /** Language */
