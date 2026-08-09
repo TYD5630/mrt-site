@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# web-app
 
-## Getting Started
+> Next.js 全栈 Web 应用（逐步建设中）。
+> 当前页面：**ZCode Work 工作区架构**单页总览（数据源 `app/architecture-data.ts`，内容镜像工作区根目录文档）。
 
-First, run the development server:
+## 技术栈
+
+- **框架**：Next.js 16（App Router）+ React 19 + TypeScript
+- **样式**：Tailwind CSS v4
+- **构建**：`npm run build` / `npm run dev`
+- **包管理**：npm（`package-lock.json` 已锁版本）
+
+## 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install       # 已装过则跳过
+cp .env.example .env.local   # 本地密钥占位（.env.local 已被 git 忽略）
+npm run dev       # http://localhost:3000
+npm run build     # 生产构建验证
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 目录
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+app/             # App Router 页面与 API 路由
+public/          # 静态资源
+AGENTS.md        # 项目专属 agent 指令（工作目录上溯自动加载）
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 规范（对齐工作区）
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 密钥只放 `.env.local`（git 忽略），`.env.example` 是占位模板，绝不提交真实值。
+- 可复用流程沉淀成工作区技能（`skill-capture`），不堆进项目文档。
+- 需要定时任务 → ZCode CronCreate 注册 + `cron/jobs.json` 登记（双源一致）。
+- 项目档案指针见工作区 `memory/`（只指路不复制代码文档）。

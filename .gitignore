@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local preview screenshots (not source)
+/preview/
+
+# mimosa security scan state (tool artifact)
+/.mimosa/
